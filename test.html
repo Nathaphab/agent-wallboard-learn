@@ -1,25 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <title>CORS Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
 </head>
+
 <body>
-    <h1>Check the console for the API data or CORS error.</h1>
     <script>
-    // This will send a request from your local file system (origin: null)
-    // to your Express server (origin: http://localhost:3001)
-    fetch('http://localhost:3001/api/agents')
-        .then(res => {
-            if (!res.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return res.json();
-        })
-        .then(data => console.log('Success! Data fetched:', data))
-        .catch(err => console.error('CORS Error:', err));
-        const cors = require('cors');
-app.use(cors());
+        fetch('http://localhost:3001/api/agents')
+            .then(res => res.json())
+            .then(data => console.log(data))
+            .catch(err => console.error('CORS Error:', err));
     </script>
 </body>
+
+
 </html>

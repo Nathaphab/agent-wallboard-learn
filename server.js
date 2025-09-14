@@ -1,67 +1,72 @@
-const express = require('express');
-const cors = require('cors'); // ตรวจสอบว่ามีบรรทัดนี้
-const app = express();
-const port = 3001;
-
-// ต้องอยู่ตรงนี้! ก่อนการกำหนด route
+// ขั้นที่ 1: Import Express
+const express = require('express'); // เติมให้ถูก
+// ขั้นที่ 2: สร้าง app  
+const app = express(); // เติมให้ถูก
+// ขั้นที่ 3: กำหนด PORT
+const PORT = 3001;
+const cors = require('cors');
 app.use(cors());
-
-// route ของคุณ
-app.get('/api/agents', (req, res) => {
-    // ...
-});
-
-app.listen(port, () => {
-    console.log(`Server is running on http://localhost:${port}`);
-});
-// Enable JSON body parsing for all incoming requests
+// เพิ่มบรรทัดนี้ก่อน routes
 app.use(express.json());
+// ขั้นที่ 4: สร้าง route แรก
+app.get('/', (req, res) => {
+    res.send("Hello Agent Wallboard!");
+}); // เติม method และ response function
 
-// ข้อมูล agents
-const agents = [
-    {
-        code: "A001",
-        name: "John Doe",
-        status: "active",
-        email: "john.doe@example.com",
-        phone: "0812345678",
-        role: "Support",
-        shift: "Day",
-        lastLogin: "2025-09-03T10:30:00Z"
-    },
-    {
-        code: "A002",
-        name: "Jane Smith",
-        status: "inactive",
-        email: "jane.smith@example.com",
-        phone: "0898765432",
-        role: "Sales",
-        shift: "Night",
-        lastLogin: "2025-09-02T21:15:00Z"
-    },
-    {
-        code: "A003",
-        name: "Bob Lee",
-        status: "active",
-        email: "bob.lee@example.com",
-        phone: "0823456789",
-        role: "Support",
-        shift: "Day",
-        lastLogin: "2025-09-03T09:50:00Z"
-    }
-];
 
-// GET All Agents
-app.get('/api/agents', (req, res) => {
-    res.json({
-        success: true,
-        data: agents,
-        count: agents.length,
+
+
+app.get('/Hello', (req, res) => {
+    res.send("Hello");
+});
+
+
+app.get('/health', (req, res) => {
+    res.send({
+        status: 'OK',
         timestamp: new Date().toISOString()
     });
 });
 
-// GET Count of Agents
+
+/*
+AVAILABLE  = พร้อมรับสาย
+ACTIVE     = กำลังคุยกับลูกค้า  
+WRAP_UP    = บันทึกหลังจบสาย
+NOT_READY  = ไม่พร้อมรับสาย (พัก/ประชุม)
+OFFLINE    = ออฟไลน์
+*/
+
+let agents = [
+    {
+        code: "A001",        // รหัส Agent
+        name: "non",         // เติมคิดเอง
+        status: "ACTIVE",       // เติมคิดเอง  
+        loginTime: new Date()
+    }, {
+        code: "A002",
+        name: "non1",
+        status: "ACTIVE",
+        loginTime: new Date()
+    }, {
+        code: "A003",
+        name: "non2",
+        status: "AVAILABLE",
+        loginTime: new Date()
+    }
+];
+
+app.get('/api/agents', (req, res) => {
+    // ควร return อะไร?
+    res.json({
+        success: true,     // เติม true/false
+        data: agents,        // เติม agents หรือไม่?
+        count: agents.length,       // เติมจำนวน agents
+        timestamp: new Date().toISOString()   // เติมเวลาปัจจุบัน
+    });
+});
+
+//Mini Challenge 2
 app.get('/api/agents/count', (req, res) => {
     res.json({
         success: true,
@@ -70,97 +75,153 @@ app.get('/api/agents/count', (req, res) => {
     });
 });
 
- //PATCH Agent Status
-app.put('/api/agents/:code/status', (req, res) => {
+//URL: http://localhost:3001/api/agents/A001/status
+app.patch('/api/agents/:code/status', (req, res) => {
     // Step 1: ดึง agent code จาก URL
-    const agentCode = req.params.code;
+    const agentCode = req.params.code; // เติม
 
     // Step 2: ดึง status ใหม่จาก body
-    const newStatus = req.body.status;
+    const newStatus = req.body.status; // เติม
 
-    // Step 3: หา agent ในระบบ
+    console.log('Agent Code:', agentCode);
+    console.log('New Status:', newStatus);
+
+
+    // หา agent ในระบบ
     const agent = agents.find(a => a.code === agentCode);
+    console.log('found agent:', agent);
 
-    // Step 4: ตรวจสอบว่าหา agent เจอหรือไม่
     if (!agent) {
         return res.status(404).json({
             success: false,
-            message: `Agent with code ${agentCode} not found`
+            error: "Agent not found"
         });
     }
 
-    // Step 5: ตรวจสอบ valid statuses
-    const validStatuses = ["Available", "Active", "Wrap Up", "Not Ready", "Offline", "active", "inactive"];
-    
+
+    // ตรวจสอบ valid statuses
+    const validStatuses = ["Available", "Active", "Wrap Up", "Not Ready", "Offline"];
+
     if (!validStatuses.includes(newStatus)) {
         return res.status(400).json({
             success: false,
-            message: `Invalid status: ${newStatus}`
+            error: "Invalid status",
+            validStatuses: validStatuses
         });
     }
 
-    // Step 6: บันทึกสถานะเก่าและอัปเดตสถานะใหม่
-    const oldStatus = agent.status;
-    agent.status = newStatus;
 
-    // Step 7: ส่ง response กลับ
+    // บันทึกสถานะเก่า
+    const oldStatus = agent.status;
+    // Step 7: เปลี่ยน status
+    agent.status = newStatus;
+    agent.lastStatusChange = new Date();
+    //Mini Challenge 3
+    console.log(`[${new Date().toISOString()}] Agent ${agentCode}: ${oldStatus} → ${newStatus}`);
+
+    console.log('current agent :', agent);
+
+    // Step 8: ส่ง response กลับ
     res.json({
         success: true,
-        agentCode: agent.code,
-        oldStatus: oldStatus,
-        newStatus: agent.status,
+        message: `Agent ${agentCode} status changed from ${oldStatus} to ${newStatus}`,
+        data: agent
+    });
+
+});
+
+
+app.get('/api/dashboard/stats', (req, res) => {
+    // ขั้นที่ 1: นับจำนวนรวม
+    const totalAgents = agents.length; // เติม
+
+    // ขั้นที่ 2: นับ Available agents
+    // ให้นักศึกษาเขียน active, wrapUp, notReady, offline เอง
+    const available = agents.filter(a => a.status === "AVAILABLE").length;
+    const active = agents.filter(a => a.status === "ACTIVE").length;
+    const wrapUp = agents.filter(a => a.status === "WRAP_UP").length;
+    const notReady = agents.filter(a => a.status === "NOT_READY").length;
+    const offline = agents.filter(a => a.status === "OFFLINE").length;
+
+
+
+    // ขั้นที่ 3: คำนวณเปอร์เซ็นต์  
+    const calcPercent = (count) => totalAgents > 0 ? Math.round((count / totalAgents) * 100) : 0;
+
+
+    // ส่งผลลัพธ์กลับ
+    res.json({
+        success: true,
+        totalAgents,
+        stats: {
+            available: { count: available, percent: calcPercent(available) },
+            active: { count: active, percent: calcPercent(active) },
+            wrapUp: { count: wrapUp, percent: calcPercent(wrapUp) },
+            notReady: { count: notReady, percent: calcPercent(notReady) },
+            offline: { count: offline, percent: calcPercent(offline) },
+        },
         timestamp: new Date().toISOString()
     });
 });
 
-// Start the server
-app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+// POST /api/agents/:code/login
+app.post('/api/agents/:code/login', (req, res) => {
+    const agentCode = req.params.code;
+    const { name } = req.body;
+    if (!name) {
+        return res.status(400).json({
+            success: false,
+            error: "Missing 'name' in request body"
+        });
+    }
+    let agent = agents.find(a => a.code === agentCode);
+
+    if (!agent) {
+        // สร้าง agent ใหม่
+        agent = {
+            code: agentCode,
+            name: name,
+            status: "AVAILABLE",
+            loginTime: new Date(),
+        };
+        agents.push(agent);
+    } else {
+        // อัปเดต agent เดิม
+        agent.name = name;
+        agent.status = "AVAILABLE";
+        agent.loginTime = new Date();
+    }
+    res.json({
+        success: true,
+        message: `Agent ${agentCode} logged in successfully`,
+        data: agent
+    });
 });
 
-app.get('/api/dashboard/stats', (req, res) => {
-    // ขั้นที่ 1: นับจำนวนรวม
-    const totalAgents = agents.length; 
-    
-    // ขั้นที่ 2: นับจำนวน Agents ในแต่ละสถานะ
-    const available = agents.filter(a => a.status === "Available").length;
-    const active = agents.filter(a => a.status === "Active").length;
-    const wrapUp = agents.filter(a => a.status === "WrapUp").length;
-    const notReady = agents.filter(a => a.status === "Not Ready").length;
-    const offline = agents.filter(a => a.status === "Offline").length;
-    
-    // ขั้นที่ 3: คำนวณเปอร์เซ็นต์  
-    const availablePercent = totalAgents > 0 ? 
-        Math.round((available / totalAgents) * 100) : 0;
-    const activePercent = totalAgents > 0 ? 
-        Math.round((active / totalAgents) * 100) : 0;
-    const wrapUpPercent = totalAgents > 0 ?
-        Math.round((wrapUp / totalAgents) * 100) : 0;
-    const notReadyPercent = totalAgents > 0 ?
-        Math.round((notReady / totalAgents) * 100) : 0;
-    const offlinePercent = totalAgents > 0 ?
-        Math.round((offline / totalAgents) * 100) : 0;
+// POST /api/agents/:code/logout
+app.post('/api/agents/:code/logout', (req, res) => {
+    const agentCode = req.params.code;
+    const agent = agents.find(a => a.code === agentCode);
+    if (!agent) {
+        return res.status(404).json({
+            success: false,
+            error: "Agent not found"
+        });
+    }
+    // เปลี่ยนสถานะเป็น Offline และลบ loginTime
+    agent.status = "OFFLINE";
+    delete agent.loginTime;
 
-    // ขั้นที่ 4: สร้าง Response
-    const responseData = {
+    res.json({
         success: true,
-        data: {
-            total: totalAgents,
-            statusBreakdown: {
-                available: { "count": available, "percent": availablePercent },
-                active: { "count": active, "percent": activePercent },
-                wrapUp: { "count": wrapUp, "percent": wrapUpPercent },
-                notReady: { "count": notReady, "percent": notReadyPercent },
-                offline: { "count": offline, "percent": offlinePercent }
-            },
-            timestamp: new Date().toISOString()
-        }
-    };
-    
-    // ส่ง Response กลับไป
-    res.json(responseData);
-    
-const cors = require('cors');
-app.use(cors());
+        message: `Agent ${agentCode} logged out successfully`,
+        data: agent
+    });
+});
 
+
+
+// ขั้นที่ 5: เริ่ม server
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });
